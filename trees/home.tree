@@ -1,0 +1,11 @@
+\title{cahilfil's playground}
+\author{cahilfil}
+\meta{author}{false}
+\p{
+  hi 🌺 this is [[cahilfil]]. welcome to my [[playground]]. ##{\square}
+}
+\transclude{now}
+
+\put\transclude/expanded{false}
+\transclude{notes}
+\transclude{planning}

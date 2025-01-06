@@ -1,0 +1,6 @@
+\title{fall 22, united states}
+\taxon{album}
+
+\xmlns:html{http://www.w3.org/1999/xhtml}
+\p{\<html:img>[src]{/photos/fall22/1.JPG}{}}
+\p{\<html:img>[src]{/photos/fall22/2.JPG}{}}

@@ -1,0 +1,23 @@
+\title{top of my mind}
+\date{2025-01-05}
+\author{cahilfil}
+
+\xmlns:html{http://www.w3.org/1999/xhtml}
+\def\checkbox{\<html:input>[disabled]{}[type]{checkbox}{}}
+\def\emstrong[body]{\em{\strong{\body}}}
+
+\p{although i know enough about complexity theory to know that i like it, fortunately there are lot more to learn. i'm currently exploring areas such pseudorandomness, probabilistically checkable proofs, error-correcting codes, lattice problems, meta-complexity etc. more concretely, i'm}
+\ul{
+  \li{\emstrong{reading:} 
+      \p{\checkbox [[dinur-2007]] 
+      \p{\checkbox [[micciancio-2012]] 
+      \p{\checkbox [[bennett-peikert-2023]]
+      \p{\checkbox [[hirahara-2022]]}}}}
+  }
+  \li{\emstrong{watching:}
+      \p{\checkbox [cs theory toolkit at cmu](https://www.youtube.com/playlist?list=PLm3J0oaFux3ZYpFLwwrlv_EHH9wtH6pnX)
+      \p{\checkbox [frontiers in complexity theory](https://www.youtube.com/playlist?list=PLKVCRT3MRed7d05URwQ9xVFF5qdfHxUxc)}}
+  }
+  \li{\em{\strong{listening to:}} [5K HD](https://5khd-music.com/)}
+}
+

@@ -1,0 +1,8 @@
+\title{some photos}
+\author{cahilfil}
+\date{2024-12-31}
+
+\put\transclude/expanded{false}
+\transclude{ph-summer23}
+\transclude{ph-fall22}
+\transclude{ph-summer21}
