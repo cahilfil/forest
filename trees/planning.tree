@@ -5,3 +5,4 @@
 \put\transclude/expanded{false}
 \transclude{daily}
 \transclude{backlog}
+\transclude{completed}
