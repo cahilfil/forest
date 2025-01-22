@@ -1,5 +1,5 @@
 \title{top of my mind}
-\date{2025-01-07}
+\date{2025-01-21}
 \author{cahilfil}
 
 \xmlns:html{http://www.w3.org/1999/xhtml}
@@ -13,14 +13,17 @@
 \ul{
   \li{\emstrong{reading:}\cl{ 
       \unchecked{[[dinur-2007]]}
-      \unchecked{[[micciancio-2012]]}
       \unchecked{[[bennett-peikert-2023]]}
-      \unchecked{[[hirahara-2022]]}
+      \unchecked{[[hirahara-2022]]}\cl{
+        \checked{[[kabanets-cai-2000]]}
+      }
+      \unchecked{[[viola-2025]]}
       }
   }
   \li{\emstrong{watching:}\cl{
       \unchecked{[[cmu-15751-2020]]}
       \unchecked{[[dimacs-frontiers-2024]]}
+      \unchecked{[[simons-metacomplexity-bootcamp-2023]]}
       }
   }
   \li{\emstrong{taking courses:}\ol{
@@ -30,6 +33,6 @@
         \li{[[ucr-math145a-2025]] (auditing)}
       }
   }
-  \li{\emstrong{listening to:} [5K HD](https://5khd-music.com/)}
+  \li{\emstrong{listening to:} [luke temple and the cascading moms](https://luketempleandthecascadingmoms.bandcamp.com/track/certain-limitations)}
 }
 
