@@ -9,7 +9,7 @@
 \def\unchecked[body]{\li{\body}}
 \def\checked[body]{\<html:li>[class]{checked}{\body}}
 
-\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such pseudorandomness, probabilistically checkable proofs, error-correcting codes, lattice problems, meta-complexity etc. more concretely, i'm}
+\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, probabilistically checkable proofs, error-correcting codes, lattice problems, meta-complexity etc. more concretely, i'm}
 \ul{
   \li{\emstrong{reading:}\cl{ 
       \unchecked{[[dinur-2007]]}

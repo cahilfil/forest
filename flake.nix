@@ -1,46 +1,32 @@
 {
   inputs = {
+    nixpkgs.url = "github:NixOS/nixpkgs";
     flake-utils.url = "github:numtide/flake-utils";
-    forest-server.url = "github:kentookura/forest-server";
-    forester = {
-      # url = "sourcehut:~jonsterling/ocaml-forester";
-      url = "/home/kento/ocaml-forester/?ref=iri";
-    };
+    forester.url = "sourcehut:~jonsterling/ocaml-forester";
   };
-  outputs =
-    {
-      self,
-      forest-server,
-      flake-utils,
-      nixpkgs,
-      forester,
-    }@inputs:
-    flake-utils.lib.eachDefaultSystem (
-      system:
-      let
-        pkgs = import nixpkgs { inherit system; };
-      in
-      {
-        devShells.default = pkgs.mkShell {
-          buildInputs = with pkgs; [
-            act
-            watchexec
-            teseq
-            forester.packages.${system}.default
-            tree-sitter
-            asciinema
-            asciinema-agg
-            nodePackages.livedown
-            nodePackages.katex
-            nodejs
-            scrot
-            imagemagick
-            gcc
-            screenkey
-            tree-sitter
-            forest-server.packages.${system}.default
-          ];
-        };
-      }
-    );
+
+  outputs = { self, nixpkgs, flake-utils, forester }:
+    flake-utils.lib.eachDefaultSystem (system: let
+      pkgs = import nixpkgs { inherit system; };
+    in {
+      packages.default = pkgs.stdenv.mkDerivation {
+        name = "forest-website";
+        src = ./.;
+        
+        nativeBuildInputs = [
+          forester.packages.${system}.default
+          pkgs.nodePackages.katex  # Required by forester
+        ];
+
+        buildPhase = ''
+          export HOME=$TMPDIR  # Clean environment
+          forester build forest.toml
+        '';
+        
+        installPhase = ''
+          mkdir -p $out
+          cp -r output/* $out/
+        '';
+      };
+    });
 }
