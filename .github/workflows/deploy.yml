@@ -1,0 +1,31 @@
+name: Deploy to GitHub Pages
+
+on:
+  push:
+    branches:
+      - main  # or your default branch
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    steps:
+      # 1. Check out the repository
+      - uses: actions/checkout@v3
+
+      # 2. Install Nix with flakes enabled
+      - name: Install Nix
+        uses: nixbuild/nix-quick-install-action@v21
+        with:
+          nix_conf: |
+            experimental-features = nix-command flakes
+
+      # 3. Build your static site using the flake
+      - name: Build site
+        run: nix build .#site --print-build-logs
+
+      # 4. Deploy the contents of the result directory to GitHub Pages
+      - name: Deploy to GitHub Pages
+        uses: peaceiris/actions-gh-pages@v3
+        with:
+          github_token: ${{ secrets.GITHUB_TOKEN }}
+          publish_dir: ./result
