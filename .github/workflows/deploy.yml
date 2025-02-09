@@ -14,10 +14,7 @@ jobs:
 
       # 2. Install Nix with flakes enabled
       - name: Install Nix
-        uses: nixbuild/nix-quick-install-action@v21
-        with:
-          nix_conf: |
-            experimental-features = nix-command flakes
+        uses: nixbuild/nix-quick-install-action@v29
 
       # 3. Build your static site using the flake
       - name: Build site
