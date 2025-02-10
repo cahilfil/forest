@@ -24,13 +24,10 @@ jobs:
   build:
     runs-on: ubuntu-latest
     steps:
-      - name: check out
-        uses: actions/checkout@v4
-      
-      - name: install nix 
-        uses: DeterminateSystems/nix-installer-action@main
-        uses: DeterminateSystems/magic-nix-cache-action@main
-        uses: DeterminateSystems/flake-checker-action@main
+      - uses: actions/checkout@v4
+      - uses: DeterminateSystems/nix-installer-action@main
+      - uses: DeterminateSystems/magic-nix-cache-action@main
+      - uses: DeterminateSystems/flake-checker-action@main
       
       - name: setup pages
         id: pages
