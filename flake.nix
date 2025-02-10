@@ -18,16 +18,7 @@
         name = "my-static-site";
         src = pkgs.runCommand "merged-src" { } ''
           mkdir -p $out
-          echo "DEBUG: Listing contents of local source (./.):"
-          ls -la ${./.}
-
-          echo "Copying local source contents to \$out"
           cp -r ${./.}/* $out || true
-
-          echo "DEBUG: Listing contents of theme folder:"
-          ls -la ${theme.packages.${system}.theme} || true
-
-          echo "Copying theme contents to \$out"
           mkdir $out/theme
           cp -r ${theme.packages.${system}.theme}/* $out/theme/ || true
         '';
