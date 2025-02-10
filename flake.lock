@@ -257,11 +257,11 @@
         "nixpkgs": "nixpkgs_3"
       },
       "locked": {
-        "lastModified": 1739093718,
-        "narHash": "sha256-zqPsctgbTzu8ILFukRovxFxJQuYp2ulhVSZ7iUDhJw4=",
+        "lastModified": 1739152555,
+        "narHash": "sha256-ssYLYi2yS/HrPNEH6d419l0ppQPmagKEWFOv+ToIvJQ=",
         "owner": "cahilfil",
         "repo": "forest-theme",
-        "rev": "6d6f27dea5e3e592b2d8a093ef5fff2bc840e799",
+        "rev": "ac4a60fb5dc8c5100ddaa2c9ca38de11d5b12d93",
         "type": "github"
       },
       "original": {
