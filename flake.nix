@@ -17,10 +17,18 @@
       packages.${system}.site = pkgs.stdenv.mkDerivation {
         name = "my-static-site";
         src = pkgs.runCommand "merged-src" { } ''
+          echo $out
           mkdir -p $out
-          cp -r ${./.}/* $out || true
-          mkdir $out/theme
-          cp -r ${theme.packages.${system}.theme}/* $out/theme/ || true
+          ls -la $out
+          cp -r ${./.}/* $out 
+          ls -la $out
+          echo "a"
+          rm -rf $out/theme 
+          echo "b"
+          ls -la $out
+          echo ${theme.packages.${system}.theme}
+          cp -rf ${theme.packages.${system}.theme} $out/
+          ls -la $out/theme
         '';
 
         buildInputs = [ forester.packages.${system}.default ];
