@@ -1,5 +1,5 @@
 \title{top of my mind}
-\date{2025-01-21}
+\date{2025-03-10}
 \author{cahilfil}
 
 \xmlns:html{http://www.w3.org/1999/xhtml}
@@ -12,16 +12,18 @@
 \p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, probabilistically checkable proofs, error-correcting codes, lattice problems, meta-complexity etc. more concretely, i'm}
 \ul{
   \li{\emstrong{reading:}\cl{ 
-      \unchecked{[[dinur-2007]]}
-      \unchecked{[[bennett-peikert-2023]]}
-      \unchecked{[[hirahara-2022]]}\cl{
-        \checked{[[kabanets-cai-2000]]}
-      }
-      \unchecked{[[viola-2025]]}
-      }
+      \checked{[[kabanets-cai-2000]]}
+      \checked{[[sudan-trevisan-vadhan-2001]]}
+      \checked{[[odonnell-2004]]}
+      \checked{[[hirahara-2018]]}
+      \unchecked{[[liu-pass-2010]]}
+      \unchecked{[[hirahara-2022]]}
+      \unchecked{[[cook-mertz-2024]]}
+      \unchecked{[[mertz-2023]]}
+      \unchecked{[[williams-2025]]}
+      \unchecked{[[viola-2025]]}}
   }
   \li{\emstrong{watching:}\cl{
-      \unchecked{[[cmu-15751-2020]]}
       \unchecked{[[dimacs-frontiers-2024]]}
       \unchecked{[[simons-metacomplexity-bootcamp-2023]]}
       }
@@ -30,7 +32,6 @@
         \li{[[ucr-cs215-2025]]}
         \li{[[ucr-cs219-2025]]}
         \li{[[ucr-math171-2025]]}
-        \li{[[ucr-math145a-2025]] (auditing)}
       }
   }
   \li{\emstrong{listening to:} [luke temple and the cascading moms](https://luketempleandthecascadingmoms.bandcamp.com/track/certain-limitations)}

@@ -1,0 +1,8 @@
+\title{march 2025}
+\taxon{month}
+
+\query\datalog{
+ ?X -:
+   {\rel/has-taxon ?X '{log}}
+   {\rel/has-tag ?X '{march}}
+}

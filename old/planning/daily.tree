@@ -2,4 +2,5 @@
 
 \p{here is the list of all of my daily logs.}
 
-\query{\query/taxon{log}}
+\transclude{2025-01}
+\transclude{2025-03}

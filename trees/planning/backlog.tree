@@ -1,12 +1,2 @@
 \title{backlog}
 
-\ol{
-  \li{understand the natural proofs barrier better}
-  \li{learn about the nisan-wigderson generator}
-  \li{learn about derandomization from hardness}
-  \li{second pass over [[kabanets-cai-2000]]}
-  \li{finish the pseudorandomness chapter of [[viola-2025]]}
-  \li{read [[hirahara-2022]]}
-  \li{finish [[nyu-csciga.3033028-2020]]}
-}
-

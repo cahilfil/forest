@@ -11,8 +11,9 @@
       pkgs = import nixpkgs { inherit system inputs; };
       system = "x86_64-linux";
     in {
-      devShells.${system}.default =
-        pkgs.mkShell { buildInputs = [ forester.packages.${system}.default ]; };
+      devShells.${system}.default = pkgs.mkShell {
+        buildInputs = [ forester.legacyPackages.${system}.forester ];
+      };
 
       packages.${system}.site = pkgs.stdenv.mkDerivation {
         name = "my-static-site";
@@ -23,7 +24,7 @@
           cp -rf ${theme.packages.${system}.theme}/* $out/theme/
         '';
 
-        buildInputs = [ forester.packages.${system}.default ];
+        buildInputs = [ forester.legacyPackages.${system}.forester ];
         buildPhase = ''
           forester build forest.toml
         '';

@@ -1,0 +1,11 @@
+\title{jan 2025}
+\taxon{month}
+
+\subtree{
+  \title{a}
+  \query\datalog{
+    ?X -:
+      {\rel/has-taxon ?X '{log}}
+      {\rel/has-tag ?X '{jan}}
+  }
+}
