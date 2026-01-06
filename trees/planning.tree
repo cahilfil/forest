@@ -1,8 +1,0 @@
-\title{planning}
-
-\p{the plan is simple: every day, i take some stuff from the backlog and make progress. \em{easy}.}
-
-\put\transclude/expanded{false}
-\transclude{logs}
-\transclude{backlog}
-\transclude{completed}
