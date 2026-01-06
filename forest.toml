@@ -1,4 +1,4 @@
 [forest]
-trees = ["trees" ]                   # The directories in which your trees are stored.css
-assets = ["assets"]                  # The directories in which your assets are stored
+trees = ["trees" ] 
+assets = ["assets"]
 url = "https://cahilfil.xyz/"
