@@ -37,7 +37,11 @@ jobs:
         run: rg -n "forest-theme|narHash|rev" flake.lock || grep -nE "forest-theme|narHash|rev" flake.lock
 
       - name: build site 
-        run: nix build .#site --print-build-logs
+        run: |
+          nix build .#site --print-build-logs || {
+            rm -rf ~/.cache/nix/flake ~/.cache/nix/git
+            nix build .#site --print-build-logs
+          }
       
       - name: upload artifact 
         uses: actions/upload-pages-artifact@v3
