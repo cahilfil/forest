@@ -33,6 +33,9 @@ jobs:
         id: pages
         uses: actions/configure-pages@v5
       
+      - name: show theme lock
+        run: rg -n "forest-theme|narHash|rev" flake.lock || grep -nE "forest-theme|narHash|rev" flake.lock
+
       - name: build site 
         run: nix build .#site --print-build-logs
       
