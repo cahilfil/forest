@@ -19,9 +19,10 @@
         name = "my-static-site";
         src = pkgs.runCommand "merged-src" { } ''
           mkdir -p $out
-          cp -r ${./.}/* $out 
+          cp -r ${./.}/* $out
           mkdir $out/theme
           cp -rf ${theme.packages.${system}.theme}/* $out/theme/
+          rm -f $out/theme/result
         '';
 
         buildInputs = [ forester.legacyPackages.${system}.forester ];
@@ -29,9 +30,9 @@
           forester build forest.toml
         '';
         installPhase = ''
-          cp -r output $out
+          mkdir -p $out
+          cp -r output/. $out/
         '';
       };
     };
 }
-
