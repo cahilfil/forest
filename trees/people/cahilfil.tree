@@ -1,6 +1,7 @@
 \title{cahilfil}
 \taxon{person}
 \meta{external}{https://www.cahilfil.xyz/}
+\xmlns:html{http://www.w3.org/1999/xhtml}
 
 \p{i'm a phd student at [[ucr]] working under [[silasrichelson]]. i'm interested in complexity theory, and tcs in general.}
 
