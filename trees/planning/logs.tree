@@ -1,0 +1,8 @@
+\title{logs}
+
+\p{here is a directory of my research logs.}
+
+\put\transclude/toc{false}
+\put\transclude/numbered{false}
+\put\transclude/expanded{false}
+\transclude{2026}

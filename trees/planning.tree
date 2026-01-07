@@ -1,0 +1,6 @@
+\title{planning}
+
+\put\transclude/expanded{false}
+\transclude{logs}
+\transclude{backlog}
+\transclude{completed}

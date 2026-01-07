@@ -9,13 +9,14 @@
 \def\unchecked[body]{\li{\body}}
 \def\checked[body]{\<html:li>[class]{checked}{\body}}
 
-\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, probabilistically checkable proofs, error-correcting codes, lattice problems, meta-complexity etc. more concretely, i'm}
+\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, catalytic computation, meta-complexity etc. more concretely, i'm}
 \ul{
   \li{\emstrong{reading:}\cl{ 
-      \checked{[[kabanets-cai-2000]]}
-      \checked{[[sudan-trevisan-vadhan-2001]]}
-      \checked{[[odonnell-2004]]}
-      \checked{[[hirahara-2018]]}
+      \checked{[[agarwala-mertz-2025]]}
+      \unchecked{[[hirahara-2022]]}
+      \unchecked{[[liu-pass-2020]]}
+      \unchecked{[[doron-pyne-tell-williams-2025]]}
+      \unchecked{[[kalai-lifshitz-minzer-ziegler-2024]]}
     }
   }
   \li{\emstrong{watching:}\cl{
@@ -24,11 +25,9 @@
       }
   }
   \li{\emstrong{taking courses:}\ol{
-        \li{[[ucr-cs215-2025]]}
-        \li{[[ucr-cs219-2025]]}
-        \li{[[ucr-math171-2025]]}
+        \li{[[ucr-math201b-2026]]}
       }
   }
-  \li{\emstrong{listening to:} [luke temple and the cascading moms](https://luketempleandthecascadingmoms.bandcamp.com/track/certain-limitations)}
+  \li{\emstrong{listening to:} [chassol](https://chassol.bandcamp.com/album/indiamore)}
 }
 
