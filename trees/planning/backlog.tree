@@ -1,2 +1,14 @@
 \title{backlog}
 
+\let\rel/incomplete-to-do{planning.query.todo.incomplete}
+
+\execute\datalog{
+ \rel/incomplete-to-do ?X -:
+  {\rel/has-taxon ?X '{to-do}}
+  {\rel/has-tag ?X '{incomplete}}
+}
+
+\query\datalog{
+ ?X -:
+  {\rel/incomplete-to-do ?X}
+ }

@@ -1,2 +1,14 @@
 \title{completed}
 
+\let\rel/complete-to-do{planning.query.todo.complete}
+
+\execute\datalog{
+ \rel/complete-to-do ?X -:
+  {\rel/has-taxon ?X '{to-do}}
+  {\rel/has-tag ?X '{complete}}
+}
+
+\query\datalog{
+ ?X -:
+  {\rel/complete-to-do ?X}
+ }
