@@ -1,0 +1,216 @@
+#!/usr/bin/env python3
+import argparse
+import datetime as dt
+import secrets
+import string
+import sys
+from pathlib import Path
+
+TAG_PREFIX = "todo-"
+ALPHABET = string.ascii_uppercase + string.digits
+BASE_MACROS_IMPORT = r"\import{base-macros}"
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def generate_tree_id(todo_dir: Path) -> str:
+    for _ in range(2000):
+        tree_id = "".join(secrets.choice(ALPHABET) for _ in range(4))
+        if not (todo_dir / f"{tree_id}.tree").exists():
+            return tree_id
+    raise RuntimeError("could not generate a unique tree id")
+
+
+def normalize_title(title: str) -> str:
+    return title.replace("\n", " ").strip()
+
+
+def escape_braces(text: str) -> str:
+    return text.replace("{", r"\{").replace("}", r"\}")
+
+
+def format_minutes(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}h {mins:02d}m"
+
+
+def normalize_todo_id(value: str) -> str:
+    cleaned = value.strip()
+    if cleaned.lower().startswith(TAG_PREFIX):
+        cleaned = cleaned[len(TAG_PREFIX) :]
+    return cleaned.upper()
+
+
+def ensure_base_macros_import(lines: list[str]) -> tuple[list[str], bool]:
+    if any(line.strip() == BASE_MACROS_IMPORT for line in lines):
+        return lines, False
+
+    updated = list(lines)
+    insert_at = 0
+    while insert_at < len(updated) and updated[insert_at].strip() == "":
+        insert_at += 1
+    updated.insert(insert_at, BASE_MACROS_IMPORT)
+    updated.insert(insert_at + 1, "")
+    return updated, True
+
+
+def find_subtasks_block(lines: list[str]) -> tuple[int | None, int | None]:
+    for i, line in enumerate(lines):
+        if line.strip().startswith(r"\subtasks{"):
+            for j in range(i + 1, len(lines)):
+                if lines[j].strip() == "}":
+                    return i, j
+            return i, None
+    return None, None
+
+
+def add_subtask_entry(lines: list[str], child_id: str) -> tuple[list[str], bool]:
+    entry = f"\\subtask{{{child_id}}}"
+    entry_exists = any(line.strip() == entry for line in lines)
+
+    start_idx, end_idx = find_subtasks_block(lines)
+    if start_idx is not None and end_idx is None:
+        raise RuntimeError("subtasks block is missing a closing brace")
+
+    if start_idx is not None and end_idx is not None:
+        if entry_exists:
+            return lines, False
+        indent = "  "
+        for i in range(start_idx + 1, end_idx):
+            stripped = lines[i].strip()
+            if stripped.startswith(r"\subtask{"):
+                indent = lines[i][: len(lines[i]) - len(lines[i].lstrip())] or "  "
+                break
+        updated = list(lines)
+        updated.insert(end_idx, f"{indent}{entry}")
+        return updated, True
+
+    subtask_indices = [
+        i for i, line in enumerate(lines) if line.strip().startswith(r"\subtask{")
+    ]
+    if subtask_indices:
+        seen: set[str] = set()
+        subtask_lines: list[str] = []
+        for idx in subtask_indices:
+            stripped = lines[idx].strip()
+            if stripped in seen:
+                continue
+            seen.add(stripped)
+            subtask_lines.append(stripped)
+        entry_added = False
+        if entry not in seen:
+            subtask_lines.append(entry)
+            entry_added = True
+        block_lines = ["\\subtasks{"] + [f"  {line}" for line in subtask_lines] + ["}"]
+        remove_indices = set(subtask_indices)
+        updated: list[str] = []
+        first_idx = subtask_indices[0]
+        for i, line in enumerate(lines):
+            if i == first_idx:
+                updated.extend(block_lines)
+            if i in remove_indices:
+                continue
+            updated.append(line)
+        return updated, entry_added
+
+    if entry_exists:
+        return lines, False
+
+    updated = list(lines)
+    while updated and updated[-1].strip() == "":
+        updated.pop()
+    if updated:
+        updated.append("")
+    updated.append("\\subtasks{")
+    updated.append(f"  {entry}")
+    updated.append("}")
+    updated.append("")
+    return updated, True
+
+
+def update_parent_subtask(path: Path, child_id: str) -> bool:
+    original = path.read_text(encoding="utf-8")
+    lines = original.splitlines()
+    lines, _ = ensure_base_macros_import(lines)
+    lines, entry_added = add_subtask_entry(lines, child_id)
+    updated = "\n".join(lines) + "\n"
+    if updated != original:
+        path.write_text(updated, encoding="utf-8")
+    return entry_added
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Create a Forester to-do tree and matching Timewarrior tag."
+    )
+    parser.add_argument("title", help="task description / tree title")
+    parser.add_argument(
+        "--todo-dir",
+        default=None,
+        help="override to-do directory (defaults to forest/trees/planning/to-do)",
+    )
+    parser.add_argument(
+        "--subtask-of",
+        default=None,
+        help="create as a subtask of an existing to-do (id or timew tag)",
+    )
+    args = parser.parse_args()
+
+    root = repo_root()
+    todo_dir = Path(args.todo_dir) if args.todo_dir else root / "trees" / "planning" / "to-do"
+    if not todo_dir.exists():
+        raise RuntimeError(f"to-do directory not found: {todo_dir}")
+
+    parent_path = None
+    if args.subtask_of:
+        parent_id = normalize_todo_id(args.subtask_of)
+        parent_path = todo_dir / f"{parent_id}.tree"
+        if not parent_path.exists():
+            raise RuntimeError(f"parent to-do not found: {parent_path}")
+
+    tree_id = generate_tree_id(todo_dir)
+    timew_tag = f"{TAG_PREFIX}{tree_id}"
+
+    title = escape_braces(normalize_title(args.title))
+
+    timestamp = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    tree_path = todo_dir / f"{tree_id}.tree"
+    initial_minutes = 0
+    pretty_time = format_minutes(initial_minutes)
+    todo_line = (
+        f"\\todo{{{timestamp}}}{{incomplete}}{{{timew_tag}}}"
+        f"{{{initial_minutes}}}{{{pretty_time}}}{{{title}}}"
+    )
+    content = "\n".join(
+        [
+            BASE_MACROS_IMPORT,
+            todo_line,
+            "",
+        ]
+    )
+
+    tree_path.write_text(content, encoding="utf-8")
+
+    print(f"created {tree_path}")
+    print(f"tree id: {tree_id}")
+    print(f"timew tag: {timew_tag}")
+    if parent_path:
+        added = update_parent_subtask(parent_path, tree_id)
+        if added:
+            print(f"added subtask to {parent_path}")
+        else:
+            print(f"subtask already listed in {parent_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)

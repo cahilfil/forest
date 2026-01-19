@@ -1,0 +1,6 @@
+\import{base-macros}
+\logday{january 18, 2026}{
+  \lognotes{
+    inspired by [[agarwala-mertz-2025]] etc., i wanted to explore some other techniques that can be potentially derandomized in the catalytic space setting, [[chatty]] suggested i should look at [[moser-tardos-2009]]. at a first glance, it seemed promising, so i spent a couple hours on understanding the algorithm for k-SAT and trying to design a CL algorithm.
+  } 
+}

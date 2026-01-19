@@ -2,12 +2,7 @@
 \date{2025-03-10}
 \author{cahilfil}
 
-\xmlns:html{http://www.w3.org/1999/xhtml}
-\def\checkbox{\<html:input>[disabled]{}[type]{checkbox}{}}
-\def\emstrong[body]{\em{\strong{\body}}}
-\def\cl[body]{\<html:ul>[class]{checkbox-list}{\body}}
-\def\unchecked[body]{\li{\body}}
-\def\checked[body]{\<html:li>[class]{checked}{\body}}
+\import{base-macros}
 
 \p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, catalytic computation, meta-complexity etc. more concretely, i'm}
 \ul{
@@ -30,4 +25,3 @@
   }
   \li{\emstrong{listening to:} [chassol](https://chassol.bandcamp.com/album/indiamore)}
 }
-

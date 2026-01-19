@@ -1,11 +1,6 @@
-\date{2026-01-07T23:10:00Z}
-\taxon{to-do}
-\put\transclude/toc{false}
-\put\transclude/metadata{false}
-\put\transclude/expanded{false}
-\tag{incomplete}
+\import{base-macros}
+\todo{2026-01-07T23:10:00Z}{incomplete}{todo-FK4Y}{84}{1h 24m}{read [[kalai-lifshitz-minzer-ziegler-2024]]}
 
-\title{read [[kalai-lifshitz-minzer-ziegler-2024]]}
-
-\p{depends on:}
-\transclude{3K30}
+\subtasks{
+  \subtask{3K30}
+}

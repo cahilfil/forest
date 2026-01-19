@@ -1,0 +1,38 @@
+\title{base macros}
+
+\xmlns:html{http://www.w3.org/1999/xhtml}
+
+\def\checkbox{\<html:input>[disabled]{}[type]{checkbox}{}}
+\def\emstrong[body]{\em{\strong{\body}}}
+\def\cl[body]{\<html:ul>[class]{checkbox-list}{\body}}
+\def\unchecked[body]{\li{\body}}
+\def\checked[body]{\<html:li>[class]{checked}{\body}}
+
+\def\subtasks[body]{\p{depends on:}\ul{\body}}
+\def\subtask[id]{\li{\transclude{\id}}}
+
+\def\todotime[minutes][pretty]{\p{\em{time:} \<html:span>[class]{todo-time-value}{\pretty}}}
+\def\todo[created][state][timewtag][minutes][pretty][heading]{
+  \date{\created}
+  \taxon{to-do}
+  \put\transclude/toc{false}
+  \put\transclude/metadata{false}
+  \put\transclude/expanded{false}
+  \tag{\state}
+  \meta{timew-tag}{\timewtag}
+  \title{\heading}
+  \todotime{\minutes}{\pretty}
+}
+
+\def\logtime[val]{\val}
+\def\logitem[id][time]{\li{[[\id]] -- \logtime{\time}}}
+\def\logmanual[body]{\li{\body}}
+\def\lognotes[body]{\body}
+\def\logitems[body]{\ul{\body}}
+\def\logday[heading][body]{
+  \title{\heading}
+  \taxon{log}
+  \body
+}
+
+\p{Base macros shared across this forest.}

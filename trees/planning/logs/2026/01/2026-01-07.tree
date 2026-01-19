@@ -1,4 +1,4 @@
-\title{january 7, 2026}
-\taxon{log}
-
-\p{same as yesterday. worked a couple hours on [[home]].}
+\import{base-macros}
+\logday{january 7, 2026}{
+  \p{same as yesterday. worked a couple hours on [[home]].}
+}

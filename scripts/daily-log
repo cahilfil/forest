@@ -1,0 +1,432 @@
+#!/usr/bin/env python3
+import argparse
+import datetime as dt
+import json
+import re
+import subprocess
+import sys
+from pathlib import Path
+
+TAG_PREFIX = "todo-"
+LEGACY_TIME_META_KEY = "time-total-minutes"
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def parse_date(value: str) -> dt.date:
+    try:
+        return dt.date.fromisoformat(value)
+    except ValueError as exc:
+        raise ValueError(f"invalid date: {value}") from exc
+
+
+def run_timew_export(start: str) -> list[dict]:
+    result = subprocess.run(
+        ["timew", "export", "from", start, "for", "1day"], capture_output=True, text=True
+    )
+    if result.returncode != 0:
+        print(result.stdout, end="")
+        print(result.stderr, end="", file=sys.stderr)
+        raise RuntimeError("timew export failed")
+
+    try:
+        return json.loads(result.stdout)
+    except json.JSONDecodeError as exc:
+        raise RuntimeError("timew export output is not valid JSON") from exc
+
+
+def parse_timew_timestamp(value: str, local_tz: dt.tzinfo) -> dt.datetime:
+    if value.endswith("Z"):
+        if "-" in value:
+            parsed = dt.datetime.strptime(value, "%Y-%m-%dT%H:%M:%SZ")
+        else:
+            parsed = dt.datetime.strptime(value, "%Y%m%dT%H%M%SZ")
+        return parsed.replace(tzinfo=dt.timezone.utc)
+
+    if "-" in value:
+        parsed = dt.datetime.fromisoformat(value)
+        return parsed if parsed.tzinfo else parsed.replace(tzinfo=local_tz)
+
+    parsed = dt.datetime.strptime(value, "%Y%m%dT%H%M%S")
+    return parsed.replace(tzinfo=local_tz)
+
+
+def load_todo_paths(todo_dir: Path) -> dict[str, Path]:
+    return {path.stem: path for path in todo_dir.glob("*.tree")}
+
+
+def match_todo_id(tags: list[str], todo_ids: set[str]) -> str | None:
+    matches: list[str] = []
+    for tag in tags:
+        if tag in todo_ids:
+            matches.append(tag)
+            continue
+        if tag.startswith(TAG_PREFIX):
+            candidate = tag[len(TAG_PREFIX) :]
+            if candidate in todo_ids:
+                matches.append(candidate)
+
+    if not matches:
+        return None
+    if len(matches) > 1:
+        print(
+            f"warning: interval has multiple todo tags {matches}; using {matches[0]}",
+            file=sys.stderr,
+        )
+    return matches[0]
+
+
+def format_minutes(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}h {mins:02d}m"
+
+
+def parse_minutes(value: str) -> int | None:
+    match = re.match(r"^(?:(\d+)h)?\s*(\d+)m$", value.strip())
+    if not match:
+        return None
+    hours = int(match.group(1) or 0)
+    minutes = int(match.group(2))
+    return hours * 60 + minutes
+
+
+def parse_logged_entries(path: Path) -> dict[str, int]:
+    if not path.exists():
+        return {}
+
+    entries: dict[str, int] = {}
+    text = path.read_text(encoding="utf-8")
+    macro_re = re.compile(r"\\logitem\{([^}]+)\}\{([^}]+)\}")
+    legacy_re = re.compile(r"\\li\{\[\[([^\]]+)\]\] -- ([^}]+)\}")
+
+    for match in macro_re.finditer(text):
+        todo_id = match.group(1).strip()
+        minutes = parse_minutes(match.group(2))
+        if minutes is None:
+            continue
+        entries[todo_id] = minutes
+
+    for match in legacy_re.finditer(text):
+        todo_id = match.group(1).strip()
+        minutes = parse_minutes(match.group(2))
+        if minutes is None:
+            continue
+        entries.setdefault(todo_id, minutes)
+    return entries
+
+
+def _extract_braced_blocks(text: str, macro_name: str) -> list[str]:
+    blocks: list[str] = []
+    marker = f"\\{macro_name}{{"
+    idx = 0
+    while True:
+        start = text.find(marker, idx)
+        if start == -1:
+            break
+        brace_start = text.find("{", start + len(macro_name))
+        if brace_start == -1:
+            break
+        depth = 0
+        i = brace_start
+        while i < len(text):
+            ch = text[i]
+            if ch in "{}" and (i == 0 or text[i - 1] != "\\"):
+                if ch == "{":
+                    depth += 1
+                else:
+                    depth -= 1
+                    if depth == 0:
+                        blocks.append(text[brace_start + 1 : i])
+                        idx = i + 1
+                        break
+            i += 1
+        else:
+            break
+    return blocks
+
+
+def parse_lognotes_blocks(path: Path) -> list[list[str]]:
+    if not path.exists():
+        return []
+
+    text = path.read_text(encoding="utf-8")
+    blocks = _extract_braced_blocks(text, "lognotes")
+    return [block.splitlines() for block in blocks]
+
+
+def parse_manual_log_entries(path: Path) -> list[str]:
+    if not path.exists():
+        return []
+
+    manual_lines: list[str] = []
+    for line in path.read_text(encoding="utf-8").splitlines():
+        stripped = line.strip()
+        if stripped.startswith(r"\logmanual{"):
+            manual_lines.append(stripped)
+    return manual_lines
+
+
+def update_time_total(path: Path, delta_minutes: int) -> None:
+    lines = path.read_text(encoding="utf-8").splitlines()
+    todo_re = re.compile(
+        r"^(?P<prefix>\s*\\todo\{[^}]*\}\{[^}]*\}\{[^}]*\}\{)"
+        r"(?P<minutes>\d+)(?P<mid>\}\{)(?P<pretty>[^}]*)(?P<suffix>\}\{.*)$"
+    )
+    for i, line in enumerate(lines):
+        match = todo_re.match(line)
+        if match:
+            current = int(match.group("minutes"))
+            new_minutes = current + delta_minutes
+            pretty = format_minutes(new_minutes)
+            lines[i] = (
+                f"{match.group('prefix')}{new_minutes}{match.group('mid')}"
+                f"{pretty}{match.group('suffix')}"
+            )
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+
+    todotime_two_re = re.compile(
+        r"^(?P<prefix>\s*\\todotime\{)(?P<minutes>\d+)(?P<mid>\}\{)"
+        r"(?P<pretty>[^}]*)\}(?P<suffix>\s*)$"
+    )
+    for i, line in enumerate(lines):
+        match = todotime_two_re.match(line)
+        if match:
+            current = int(match.group("minutes"))
+            new_minutes = current + delta_minutes
+            pretty = format_minutes(new_minutes)
+            lines[i] = (
+                f"{match.group('prefix')}{new_minutes}{match.group('mid')}"
+                f"{pretty}}}{match.group('suffix')}"
+            )
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+    todotime_re = re.compile(r"^(?P<prefix>\s*\\todotime\{)(?P<minutes>\d+)(?P<suffix>\}\s*)$")
+    for i, line in enumerate(lines):
+        match = todotime_re.match(line)
+        if match:
+            current = int(match.group("minutes"))
+            lines[i] = (
+                f"{match.group('prefix')}{current + delta_minutes}{match.group('suffix')}"
+            )
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+
+    meta_re = re.compile(
+        r"^\\meta\{" + re.escape(LEGACY_TIME_META_KEY) + r"\}\{(\d+)\}\s*$"
+    )
+    for i, line in enumerate(lines):
+        match = meta_re.match(line)
+        if match:
+            current = int(match.group(1))
+            lines[i] = f"\\meta{{{LEGACY_TIME_META_KEY}}}{{{current + delta_minutes}}}"
+            path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return
+
+    raise RuntimeError(f"missing todo time entry in {path}")
+
+
+def ensure_index_file(path: Path, entry: str) -> None:
+    line = f"\\transclude{{{entry}}}"
+    if not path.exists():
+        content = "\n".join(
+            [
+                "\\put\\transclude/toc{false}",
+                "\\put\\transclude/numbered{false}",
+                "\\put\\transclude/expanded{false}",
+                line,
+                "",
+            ]
+        )
+        path.write_text(content, encoding="utf-8")
+        return
+
+    lines = path.read_text(encoding="utf-8").splitlines()
+    if line in lines:
+        return
+
+    insert_at = 0
+    for i, existing in enumerate(lines):
+        if existing.startswith("\\transclude{"):
+            insert_at = i + 1
+    lines.insert(insert_at, line)
+    path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def ensure_logs_tree(logs_tree: Path, year: str) -> None:
+    line = f"\\transclude{{{year}}}"
+    if not logs_tree.exists():
+        raise RuntimeError(f"missing logs tree: {logs_tree}")
+
+    lines = logs_tree.read_text(encoding="utf-8").splitlines()
+    if line in lines:
+        return
+
+    insert_at = 0
+    for i, existing in enumerate(lines):
+        if existing.startswith("\\transclude{"):
+            insert_at = i + 1
+    lines.insert(insert_at, line)
+    logs_tree.write_text("\n".join(lines) + "\n", encoding="utf-8")
+
+
+def build_log_content(
+    date: dt.date,
+    entries: list[tuple[str, int]],
+    manual_entries: list[str],
+    lognotes_blocks: list[list[str]],
+) -> str:
+    month_name = date.strftime("%B").lower()
+    title = f"{month_name} {date.day}, {date.year}"
+
+    lines = [
+        "\\import{base-macros}",
+        f"\\logday{{{title}}}{{",
+    ]
+
+    for block in lognotes_blocks:
+        lines.append("  \\lognotes{")
+        if block:
+            for line in block:
+                lines.append(f"    {line}")
+        lines.append("  }")
+
+    lines.append("  \\logitems{")
+    for todo_id, minutes in entries:
+        lines.append(
+            f"    \\logitem{{{todo_id}}}{{{format_minutes(minutes)}}}"
+        )
+
+    for manual in manual_entries:
+        lines.append(f"    {manual}")
+
+    lines.extend(["  }", "}", ""])
+    return "\n".join(lines)
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Update daily time totals and create a log from Timewarrior data."
+    )
+    parser.add_argument(
+        "--date",
+        help="date to process (YYYY-MM-DD). defaults to today",
+    )
+    parser.add_argument(
+        "--todo-dir",
+        default=None,
+        help="override to-do directory (defaults to forest/trees/planning/to-do)",
+    )
+    parser.add_argument(
+        "--logs-dir",
+        default=None,
+        help="override logs directory (defaults to forest/trees/planning/logs)",
+    )
+    args = parser.parse_args()
+
+    date = parse_date(args.date) if args.date else dt.date.today()
+    root = repo_root()
+    todo_dir = Path(args.todo_dir) if args.todo_dir else root / "trees" / "planning" / "to-do"
+    logs_dir = Path(args.logs_dir) if args.logs_dir else root / "trees" / "planning" / "logs"
+
+    if not todo_dir.exists():
+        raise RuntimeError(f"to-do directory not found: {todo_dir}")
+    if not logs_dir.exists():
+        raise RuntimeError(f"logs directory not found: {logs_dir}")
+
+    todo_paths = load_todo_paths(todo_dir)
+    todo_ids = set(todo_paths.keys())
+
+    start = date.strftime("%Y-%m-%dT00:00:00")
+
+    intervals = run_timew_export(start)
+
+    local_tz = dt.datetime.now().astimezone().tzinfo
+    day_start = dt.datetime.combine(date, dt.time.min).replace(tzinfo=local_tz)
+    day_end = day_start + dt.timedelta(days=1)
+
+    durations: dict[str, float] = {}
+
+    for interval in intervals:
+        start_raw = interval.get("start")
+        if not start_raw:
+            continue
+        end_raw = interval.get("end")
+
+        start_dt = parse_timew_timestamp(start_raw, local_tz).astimezone(local_tz)
+        if end_raw:
+            end_dt = parse_timew_timestamp(end_raw, local_tz).astimezone(local_tz)
+        else:
+            end_dt = dt.datetime.now(tz=local_tz)
+
+        overlap_start = max(start_dt, day_start)
+        overlap_end = min(end_dt, day_end)
+        if overlap_end <= overlap_start:
+            continue
+
+        tags = interval.get("tags") or []
+        todo_id = match_todo_id(tags, todo_ids)
+        if not todo_id:
+            continue
+
+        durations[todo_id] = durations.get(todo_id, 0.0) + (overlap_end - overlap_start).total_seconds()
+
+    if not durations:
+        print("warning: no matching timewarrior entries found", file=sys.stderr)
+
+    year = f"{date.year}"
+    month = f"{date.month:02d}"
+    day = f"{date.day:02d}"
+    log_path = logs_dir / year / month / f"{year}-{month}-{day}.tree"
+    logged_minutes = parse_logged_entries(log_path)
+    manual_entries = parse_manual_log_entries(log_path)
+    lognotes_blocks = parse_lognotes_blocks(log_path)
+
+    entries: list[tuple[str, int]] = []
+    for todo_id, seconds in durations.items():
+        minutes = int(round(seconds / 60))
+        if minutes <= 0:
+            continue
+        previous_minutes = logged_minutes.get(todo_id, 0)
+        delta = minutes - previous_minutes
+        if delta < 0:
+            print(
+                f"warning: {todo_id} has less time than existing log; skipping update",
+                file=sys.stderr,
+            )
+        elif delta > 0:
+            update_time_total(todo_paths[todo_id], delta)
+        entries.append((todo_id, minutes))
+
+    entries.sort(key=lambda item: (-item[1], item[0]))
+
+    logs_tree = logs_dir.parent / "logs.tree"
+    ensure_logs_tree(logs_tree, year)
+
+    year_dir = logs_dir / year
+    year_dir.mkdir(parents=True, exist_ok=True)
+    ensure_index_file(logs_dir / f"{year}.tree", f"{year}-{month}")
+
+    month_dir = year_dir / month
+    month_dir.mkdir(parents=True, exist_ok=True)
+    ensure_index_file(year_dir / f"{year}-{month}.tree", f"{year}-{month}-{day}")
+
+    log_content = build_log_content(date, entries, manual_entries, lognotes_blocks)
+    log_path.write_text(log_content, encoding="utf-8")
+
+    print(f"updated {len(entries)} to-do entries")
+    print(f"wrote log {log_path}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)
