@@ -1,2 +1,4 @@
 output/
 result
+__pycache__/
+*.pyc

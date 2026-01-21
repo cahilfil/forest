@@ -7,7 +7,8 @@ import subprocess
 import sys
 from pathlib import Path
 
-TAG_PREFIX = "todo-"
+TODO_TAG_PREFIX = "todo-"
+QUESTION_TAG_PREFIX = "question-"
 LEGACY_TIME_META_KEY = "time-total-minutes"
 
 
@@ -53,26 +54,28 @@ def parse_timew_timestamp(value: str, local_tz: dt.tzinfo) -> dt.datetime:
     return parsed.replace(tzinfo=local_tz)
 
 
-def load_todo_paths(todo_dir: Path) -> dict[str, Path]:
-    return {path.stem: path for path in todo_dir.glob("*.tree")}
+def load_tree_paths(tree_dir: Path) -> dict[str, Path]:
+    return {path.stem: path for path in tree_dir.glob("*.tree")}
 
 
-def match_todo_id(tags: list[str], todo_ids: set[str]) -> str | None:
+def match_tree_id(
+    tags: list[str], tree_ids: set[str], tag_prefix: str, label: str
+) -> str | None:
     matches: list[str] = []
     for tag in tags:
-        if tag in todo_ids:
+        if tag in tree_ids:
             matches.append(tag)
             continue
-        if tag.startswith(TAG_PREFIX):
-            candidate = tag[len(TAG_PREFIX) :]
-            if candidate in todo_ids:
+        if tag.startswith(tag_prefix):
+            candidate = tag[len(tag_prefix) :]
+            if candidate in tree_ids:
                 matches.append(candidate)
 
     if not matches:
         return None
     if len(matches) > 1:
         print(
-            f"warning: interval has multiple todo tags {matches}; using {matches[0]}",
+            f"warning: interval has multiple {label} tags {matches}; using {matches[0]}",
             file=sys.stderr,
         )
     return matches[0]
@@ -87,9 +90,13 @@ def format_minutes(minutes: int) -> str:
 
 
 def parse_minutes(value: str) -> int | None:
-    match = re.match(r"^(?:(\d+)h)?\s*(\d+)m$", value.strip())
+    cleaned = value.strip()
+    match = re.match(r"^(?:(\d+)h)?\s*(\d+)m$", cleaned)
     if not match:
-        return None
+        match = re.match(r"^(\d+)\s*h$", cleaned)
+        if not match:
+            return None
+        return int(match.group(1)) * 60
     hours = int(match.group(1) or 0)
     minutes = int(match.group(2))
     return hours * 60 + minutes
@@ -164,17 +171,38 @@ def parse_manual_log_entries(path: Path) -> list[str]:
         return []
 
     manual_lines: list[str] = []
+    manual_re = re.compile(r"^\\logmanual\{([^}]*)\}\{([^}]*)\}$")
     for line in path.read_text(encoding="utf-8").splitlines():
         stripped = line.strip()
         if stripped.startswith(r"\logmanual{"):
-            manual_lines.append(stripped)
+            match = manual_re.match(stripped)
+            if not match:
+                print(
+                    f"warning: logmanual entry is not in \\\\logmanual{{body}}{{time}} format in {path}: {stripped}",
+                    file=sys.stderr,
+                )
+                manual_lines.append(stripped)
+                continue
+            body = match.group(1)
+            time_raw = match.group(2).strip()
+            time_compact = re.sub(r"(?<=\d)\s+(?=[hm])", "", time_raw)
+            time_compact = re.sub(r"\s+", " ", time_compact)
+            minutes = parse_minutes(time_compact)
+            if minutes is None:
+                print(
+                    f"warning: logmanual entry time '{time_raw}' is not in the expected format in {path}: {stripped}",
+                    file=sys.stderr,
+                )
+                manual_lines.append(stripped)
+                continue
+            manual_lines.append(f"\\logmanual{{{body}}}{{{format_minutes(minutes)}}}")
     return manual_lines
 
 
 def update_time_total(path: Path, delta_minutes: int) -> None:
     lines = path.read_text(encoding="utf-8").splitlines()
     todo_re = re.compile(
-        r"^(?P<prefix>\s*\\todo\{[^}]*\}\{[^}]*\}\{[^}]*\}\{)"
+        r"^(?P<prefix>\s*\\(?:todo|question)\{[^}]*\}\{[^}]*\}\{[^}]*\}\{)"
         r"(?P<minutes>\d+)(?P<mid>\}\{)(?P<pretty>[^}]*)(?P<suffix>\}\{.*)$"
     )
     for i, line in enumerate(lines):
@@ -191,7 +219,7 @@ def update_time_total(path: Path, delta_minutes: int) -> None:
             return
 
     todotime_two_re = re.compile(
-        r"^(?P<prefix>\s*\\todotime\{)(?P<minutes>\d+)(?P<mid>\}\{)"
+        r"^(?P<prefix>\s*\\(?:todotime|questiontime)\{)(?P<minutes>\d+)(?P<mid>\}\{)"
         r"(?P<pretty>[^}]*)\}(?P<suffix>\s*)$"
     )
     for i, line in enumerate(lines):
@@ -206,7 +234,9 @@ def update_time_total(path: Path, delta_minutes: int) -> None:
             )
             path.write_text("\n".join(lines) + "\n", encoding="utf-8")
             return
-    todotime_re = re.compile(r"^(?P<prefix>\s*\\todotime\{)(?P<minutes>\d+)(?P<suffix>\}\s*)$")
+    todotime_re = re.compile(
+        r"^(?P<prefix>\s*\\(?:todotime|questiontime)\{)(?P<minutes>\d+)(?P<suffix>\}\s*)$"
+    )
     for i, line in enumerate(lines):
         match = todotime_re.match(line)
         if match:
@@ -297,9 +327,9 @@ def build_log_content(
         lines.append("  }")
 
     lines.append("  \\logitems{")
-    for todo_id, minutes in entries:
+    for tree_id, minutes in entries:
         lines.append(
-            f"    \\logitem{{{todo_id}}}{{{format_minutes(minutes)}}}"
+            f"    \\logitem{{{tree_id}}}{{{format_minutes(minutes)}}}"
         )
 
     for manual in manual_entries:
@@ -307,6 +337,30 @@ def build_log_content(
 
     lines.extend(["  }", "}", ""])
     return "\n".join(lines)
+
+
+def apply_durations(
+    durations: dict[str, float],
+    logged_minutes: dict[str, int],
+    tree_paths: dict[str, Path],
+    label: str,
+) -> list[tuple[str, int]]:
+    entries: list[tuple[str, int]] = []
+    for tree_id, seconds in durations.items():
+        minutes = int(round(seconds / 60))
+        if minutes <= 0:
+            continue
+        previous_minutes = logged_minutes.get(tree_id, 0)
+        delta = minutes - previous_minutes
+        if delta < 0:
+            print(
+                f"warning: {label} {tree_id} has less time than existing log; skipping update",
+                file=sys.stderr,
+            )
+        elif delta > 0:
+            update_time_total(tree_paths[tree_id], delta)
+        entries.append((tree_id, minutes))
+    return entries
 
 
 def main() -> int:
@@ -323,6 +377,11 @@ def main() -> int:
         help="override to-do directory (defaults to forest/trees/planning/to-do)",
     )
     parser.add_argument(
+        "--question-dir",
+        default=None,
+        help="override question directory (defaults to forest/trees/notes/questions)",
+    )
+    parser.add_argument(
         "--logs-dir",
         default=None,
         help="override logs directory (defaults to forest/trees/planning/logs)",
@@ -332,15 +391,22 @@ def main() -> int:
     date = parse_date(args.date) if args.date else dt.date.today()
     root = repo_root()
     todo_dir = Path(args.todo_dir) if args.todo_dir else root / "trees" / "planning" / "to-do"
+    question_dir = (
+        Path(args.question_dir) if args.question_dir else root / "trees" / "notes" / "questions"
+    )
     logs_dir = Path(args.logs_dir) if args.logs_dir else root / "trees" / "planning" / "logs"
 
     if not todo_dir.exists():
         raise RuntimeError(f"to-do directory not found: {todo_dir}")
+    if not question_dir.exists():
+        raise RuntimeError(f"question directory not found: {question_dir}")
     if not logs_dir.exists():
         raise RuntimeError(f"logs directory not found: {logs_dir}")
 
-    todo_paths = load_todo_paths(todo_dir)
+    todo_paths = load_tree_paths(todo_dir)
     todo_ids = set(todo_paths.keys())
+    question_paths = load_tree_paths(question_dir)
+    question_ids = set(question_paths.keys())
 
     start = date.strftime("%Y-%m-%dT00:00:00")
 
@@ -350,7 +416,8 @@ def main() -> int:
     day_start = dt.datetime.combine(date, dt.time.min).replace(tzinfo=local_tz)
     day_end = day_start + dt.timedelta(days=1)
 
-    durations: dict[str, float] = {}
+    todo_durations: dict[str, float] = {}
+    question_durations: dict[str, float] = {}
 
     for interval in intervals:
         start_raw = interval.get("start")
@@ -370,13 +437,18 @@ def main() -> int:
             continue
 
         tags = interval.get("tags") or []
-        todo_id = match_todo_id(tags, todo_ids)
-        if not todo_id:
-            continue
+        todo_id = match_tree_id(tags, todo_ids, TODO_TAG_PREFIX, "todo")
+        if todo_id:
+            todo_durations[todo_id] = todo_durations.get(todo_id, 0.0) + (
+                overlap_end - overlap_start
+            ).total_seconds()
+        question_id = match_tree_id(tags, question_ids, QUESTION_TAG_PREFIX, "question")
+        if question_id:
+            question_durations[question_id] = question_durations.get(question_id, 0.0) + (
+                overlap_end - overlap_start
+            ).total_seconds()
 
-        durations[todo_id] = durations.get(todo_id, 0.0) + (overlap_end - overlap_start).total_seconds()
-
-    if not durations:
+    if not todo_durations and not question_durations:
         print("warning: no matching timewarrior entries found", file=sys.stderr)
 
     year = f"{date.year}"
@@ -387,21 +459,11 @@ def main() -> int:
     manual_entries = parse_manual_log_entries(log_path)
     lognotes_blocks = parse_lognotes_blocks(log_path)
 
-    entries: list[tuple[str, int]] = []
-    for todo_id, seconds in durations.items():
-        minutes = int(round(seconds / 60))
-        if minutes <= 0:
-            continue
-        previous_minutes = logged_minutes.get(todo_id, 0)
-        delta = minutes - previous_minutes
-        if delta < 0:
-            print(
-                f"warning: {todo_id} has less time than existing log; skipping update",
-                file=sys.stderr,
-            )
-        elif delta > 0:
-            update_time_total(todo_paths[todo_id], delta)
-        entries.append((todo_id, minutes))
+    todo_entries = apply_durations(todo_durations, logged_minutes, todo_paths, "to-do")
+    question_entries = apply_durations(
+        question_durations, logged_minutes, question_paths, "question"
+    )
+    entries = todo_entries + question_entries
 
     entries.sort(key=lambda item: (-item[1], item[0]))
 
@@ -419,7 +481,9 @@ def main() -> int:
     log_content = build_log_content(date, entries, manual_entries, lognotes_blocks)
     log_path.write_text(log_content, encoding="utf-8")
 
-    print(f"updated {len(entries)} to-do entries")
+    print(
+        f"updated {len(todo_entries)} to-do entries and {len(question_entries)} question entries"
+    )
     print(f"wrote log {log_path}")
     return 0
 

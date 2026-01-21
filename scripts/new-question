@@ -1,0 +1,111 @@
+#!/usr/bin/env python3
+import argparse
+import datetime as dt
+import secrets
+import string
+import sys
+from pathlib import Path
+
+TAG_PREFIX = "question-"
+ID_PREFIX = "Q"
+RELATED_PREFIX = "related-"
+ALPHABET = string.ascii_uppercase + string.digits
+BASE_MACROS_IMPORT = r"\import{base-macros}"
+
+
+def repo_root() -> Path:
+    return Path(__file__).resolve().parents[1]
+
+
+def generate_tree_id(question_dir: Path) -> str:
+    for _ in range(2000):
+        suffix = "".join(secrets.choice(ALPHABET) for _ in range(4))
+        tree_id = f"{ID_PREFIX}{suffix}"
+        if not (question_dir / f"{tree_id}.tree").exists():
+            return tree_id
+    raise RuntimeError("could not generate a unique tree id")
+
+
+def normalize_title(title: str) -> str:
+    return title.replace("\n", " ").strip()
+
+
+def escape_braces(text: str) -> str:
+    return text.replace("{", r"\{").replace("}", r"\}")
+
+
+def format_minutes(minutes: int) -> str:
+    if minutes < 60:
+        return f"{minutes}m"
+    hours = minutes // 60
+    mins = minutes % 60
+    return f"{hours}h {mins:02d}m"
+
+
+def build_related_content(timew_tag: str) -> str:
+    return "\n".join(
+        [
+            BASE_MACROS_IMPORT,
+            "\\title{related to-dos}",
+            "\\put\\transclude/toc{false}",
+            "\\put\\transclude/expanded{false}",
+            f"\\relatedtodos{{{timew_tag}}}",
+            "",
+        ]
+    )
+
+
+def main() -> int:
+    parser = argparse.ArgumentParser(
+        description="Create a Forester question tree and matching Timewarrior tag."
+    )
+    parser.add_argument("title", help="research question / tree title")
+    parser.add_argument(
+        "--question-dir",
+        default=None,
+        help="override question directory (defaults to forest/trees/notes/questions)",
+    )
+    args = parser.parse_args()
+
+    root = repo_root()
+    question_dir = (
+        Path(args.question_dir)
+        if args.question_dir
+        else root / "trees" / "notes" / "questions"
+    )
+    if not question_dir.exists():
+        raise RuntimeError(f"question directory not found: {question_dir}")
+
+    tree_id = generate_tree_id(question_dir)
+    timew_tag = f"{TAG_PREFIX}{tree_id}"
+
+    title = escape_braces(normalize_title(args.title))
+
+    timestamp = dt.datetime.utcnow().strftime("%Y-%m-%dT%H:%M:%SZ")
+    tree_path = question_dir / f"{tree_id}.tree"
+    related_tree_id = f"{RELATED_PREFIX}{timew_tag}"
+    related_path = question_dir / f"{related_tree_id}.tree"
+    initial_minutes = 0
+    pretty_time = format_minutes(initial_minutes)
+    question_line = (
+        f"\\question{{{timestamp}}}{{open}}{{{timew_tag}}}"
+        f"{{{initial_minutes}}}{{{pretty_time}}}{{{title}}}"
+    )
+    content = "\n".join([BASE_MACROS_IMPORT, question_line, ""])
+
+    tree_path.write_text(content, encoding="utf-8")
+    related_path.write_text(build_related_content(timew_tag), encoding="utf-8")
+
+    print(f"created {tree_path}")
+    print(f"created {related_path}")
+    print(f"tree id: {tree_id}")
+    print(f"timew tag: {timew_tag}")
+    return 0
+
+
+if __name__ == "__main__":
+    try:
+        raise SystemExit(main())
+    except Exception as exc:
+        print(f"error: {exc}", file=sys.stderr)
+        raise SystemExit(1)

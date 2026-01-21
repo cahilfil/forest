@@ -1,0 +1,8 @@
+\date{2026-01-20T23:13:28Z}
+\title{some obstacles toward moser-tardos in catalytic logspace}
+
+\p{\em{context.} this tree describes the obstacles towards resolving [[QP4OX]], specifically in the logspace regime.}
+
+\p{initial obvious obstacle i thought was the recursion stack, but i don't that should be a problem, we don't have to recurse on the work tape. even though it might require careful handling of the auxilary tape, compression and recursive fix should be able to dovetailed, nice.}
+
+\p{the more fundamental problem seems to be the root calls and the associated $mlogm$space needed. one idea to overcome this might be another layer of compress-or-compute, where the root clauses are provided by the auxilary tape.}

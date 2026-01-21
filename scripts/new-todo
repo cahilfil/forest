@@ -7,6 +7,7 @@ import sys
 from pathlib import Path
 
 TAG_PREFIX = "todo-"
+QUESTION_TAG_PREFIX = "question-"
 ALPHABET = string.ascii_uppercase + string.digits
 BASE_MACROS_IMPORT = r"\import{base-macros}"
 
@@ -43,6 +44,13 @@ def normalize_todo_id(value: str) -> str:
     cleaned = value.strip()
     if cleaned.lower().startswith(TAG_PREFIX):
         cleaned = cleaned[len(TAG_PREFIX) :]
+    return cleaned.upper()
+
+
+def normalize_question_id(value: str) -> str:
+    cleaned = value.strip()
+    if cleaned.lower().startswith(QUESTION_TAG_PREFIX):
+        cleaned = cleaned[len(QUESTION_TAG_PREFIX) :]
     return cleaned.upper()
 
 
@@ -159,6 +167,12 @@ def main() -> int:
         default=None,
         help="create as a subtask of an existing to-do (id or timew tag)",
     )
+    parser.add_argument(
+        "--question",
+        action="append",
+        default=[],
+        help="associate with a question (id or question- tag). can be repeated",
+    )
     args = parser.parse_args()
 
     root = repo_root()
@@ -186,10 +200,23 @@ def main() -> int:
         f"\\todo{{{timestamp}}}{{incomplete}}{{{timew_tag}}}"
         f"{{{initial_minutes}}}{{{pretty_time}}}{{{title}}}"
     )
+    seen_tags: set[str] = set()
+    question_tags: list[str] = []
+    for value in args.question:
+        question_id = normalize_question_id(value)
+        if not question_id:
+            continue
+        tag = f"{QUESTION_TAG_PREFIX}{question_id}"
+        if tag in seen_tags:
+            continue
+        seen_tags.add(tag)
+        question_tags.append(tag)
+    tag_lines = [f"\\tag{{{tag}}}" for tag in question_tags]
     content = "\n".join(
         [
             BASE_MACROS_IMPORT,
             todo_line,
+            *tag_lines,
             "",
         ]
     )

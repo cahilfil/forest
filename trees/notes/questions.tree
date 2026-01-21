@@ -1,0 +1,14 @@
+\title{questions}
+
+\let\rel/open-question{notes.query.question.open}
+
+\execute\datalog{
+ \rel/open-question ?X -:
+  {\rel/has-taxon ?X '{question}}
+  {\rel/has-tag ?X '{open}}
+}
+
+\query\datalog{
+ ?X -:
+  {\rel/open-question ?X}
+ }

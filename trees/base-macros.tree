@@ -10,7 +10,9 @@
 
 \def\subtasks[body]{\p{depends on:}\ul{\body}}
 \def\subtask[id]{\li{\transclude{\id}}}
+\let\rel/related-to-do{notes.query.question.related-todo}
 
+\def\taskstatus[status]{\p{\em{status:} \status}}
 \def\todotime[minutes][pretty]{\p{\em{time:} \<html:span>[class]{todo-time-value}{\pretty}}}
 \def\todo[created][state][timewtag][minutes][pretty][heading]{
   \date{\created}
@@ -21,12 +23,38 @@
   \tag{\state}
   \meta{timew-tag}{\timewtag}
   \title{\heading}
+  \taskstatus{\state}
   \todotime{\minutes}{\pretty}
+}
+\def\questiontime[minutes][pretty]{\p{\em{time:} \<html:span>[class]{todo-time-value question-time-value}{\pretty}}}
+\def\question[created][state][timewtag][minutes][pretty][heading]{
+  \date{\created}
+  \taxon{question}
+  \put\transclude/metadata{false}
+  \put\transclude/expanded{false}
+  \tag{\state}
+  \meta{timew-tag}{\timewtag}
+  \title{\heading}
+  \taskstatus{\state}
+  \questiontime{\minutes}{\pretty}
+  \put\transclude/toc{false}
+  \transclude{related-\timewtag}
+}
+\def\relatedtodos[timewtag]{
+  \execute\datalog{
+   \rel/related-to-do ?X -:
+    {\rel/has-taxon ?X '{to-do}}
+    {\rel/has-tag ?X '{\timewtag}}
+  }
+  \query\datalog{
+   ?X -:
+    {\rel/related-to-do ?X}
+   }
 }
 
 \def\logtime[val]{\val}
 \def\logitem[id][time]{\li{[[\id]] -- \logtime{\time}}}
-\def\logmanual[body]{\li{\body}}
+\def\logmanual[body][time]{\li{\body -- \logtime{\time}}}
 \def\lognotes[body]{\body}
 \def\logitems[body]{\ul{\body}}
 \def\logday[heading][body]{

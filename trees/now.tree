@@ -4,7 +4,7 @@
 
 \import{base-macros}
 
-\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, catalytic computation, meta-complexity etc. more concretely, i'm}
+\p{although i know enough about complexity theory to know that i like it, fortunately there is a lot more to learn. i'm currently exploring areas such as pseudorandomness, catalytic computing, meta-complexity etc. more concretely, i'm}
 \ul{
   \li{\emstrong{reading:}\cl{ 
       \checked{[[agarwala-mertz-2025]]}
