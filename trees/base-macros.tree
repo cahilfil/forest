@@ -42,13 +42,13 @@
 }
 \def\relatedtodos[timewtag]{
   \execute\datalog{
-   \rel/related-to-do ?X -:
+   \rel/related-to-do ?X ?Tag -:
     {\rel/has-taxon ?X '{to-do}}
-    {\rel/has-tag ?X '{\timewtag}}
+    {\rel/has-tag ?X ?Tag}
   }
   \query\datalog{
    ?X -:
-    {\rel/related-to-do ?X}
+    {\rel/related-to-do ?X '{\timewtag}}
    }
 }
 

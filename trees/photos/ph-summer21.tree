@@ -3,4 +3,4 @@
 \taxon{album}
 
 \xmlns:html{http://www.w3.org/1999/xhtml}
-\p{\<html:img>[src]{/photos/summer21/1.JPG}{}}
+\p{\<html:img>[src]{\route-asset{assets/photos/summer21/1.JPG}}{}}
